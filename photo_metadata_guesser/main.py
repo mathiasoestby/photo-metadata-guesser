@@ -30,9 +30,14 @@ def _process_date(date, date_points, lat, lon, min_date, max_date,
 
 
 def find_closest_points_by_location(
-        points_by_date: dict[str, list[dict]], lat: float, lon: float,
-        min_date: str, max_date: str,
-        max_distance: int = 100, n: int = 5) -> list[dict]:
+        points_by_date: dict[str, list[dict[str, float | str]]],
+        lat: float,
+        lon: float,
+        min_date: str,
+        max_date: str,
+        max_distance: int = 100,
+        n: int = 5
+        ) -> list[dict]:
     # Find all points within the date range
     closest_points = []
     index = 0
@@ -116,11 +121,15 @@ def find_point_from_date(
 
 def find_points_from_locations(
         points_by_date: dict[str, list[dict]],
-        picture_locations: dict[str, dict[str, float]]
+        picture_locations: dict[str, dict[str, float]],
+        min_date: str = "2024-09-01",
+        max_date: str = datetime.now().date().isoformat(),
+        max_distance: int = 100,
+        n: int = 5
         ) -> dict[str, list[dict]]:
-    """Finner punkter fra en liste med lokasjoner."""
+    """Find points from a list of locations."""
 
-    def resolve_duplicate_time_entry(min_date, found_point):  
+    def resolve_duplicate_time_entry(min_date, found_point):
         if not found_point:
             return min_date, None
         if min_date == found_point["time"]:
@@ -131,14 +140,6 @@ def find_points_from_locations(
             min_date = found_point["time"]
         return min_date, found_point
 
-    min_date = "2024-09-01"  # input("Enter start date (YYYY-MM-DD): ")
-    max_date = None  # input("Enter end date (YYYY-MM-DD): ")
-
-    if not min_date:
-        min_date = "2013-01-01"
-    if not max_date:
-        max_date = datetime.now().date().isoformat()
-
     mapped_picture_points: dict[str, list[dict]] = {}
 
     for name, location in picture_locations.items():
@@ -146,7 +147,7 @@ def find_points_from_locations(
 
         lat, lon = location["lat"], location["lon"]
         closest_image_points = find_closest_points_by_location(
-            points_by_date, lat, lon, min_date, max_date)
+            points_by_date, lat, lon, min_date, max_date, max_distance, n)
 
         # Add one minute to the time if
         # it is the same as the previous picture
@@ -244,7 +245,7 @@ def read_pictures(
 # TESTING
 
 
-def test(points_by_date):
+def test(points_by_date) -> None:
     test_locations = {
         "Helsinki cathedral": "60.170418, 24.952174",
         "Tallin city gates": "59.43658520202904, 24.75032650543977"
@@ -258,7 +259,7 @@ def test(points_by_date):
         max_date = "2024-09-31"
         found_point = find_closest_points_by_location(
             points_by_date, float(lat), float(lon), min_date, max_date)
-        found_dates[name] = found_point["time"] if found_point else None
+        found_dates[name] = found_point[0]["time"] if found_point else None
 
     print("test_results")
     for name, found_date in found_dates.items():
@@ -269,7 +270,7 @@ def test(points_by_date):
 # MAIN
 
 
-def print_results(picture_dates):
+def print_results(picture_dates) -> None:
     """Skriver resultatene til konsollen."""
     for name, point in picture_dates.items():
         if point:
@@ -311,9 +312,9 @@ def write_picture_dates_to_file(picture_dates):
                     else:
                         times.append(", " + time_part)
                 times = "".join(times)
-                f.write(f"Picture: ...{name[18:]:<30} -> Dates: {times}\n")
+                f.write(f"Picture: ...{name[-18:]:<30} -> Dates: {times}\n")
             else:
-                f.write(f"Picture: ...{name[18:]:<30} -> No date found\n")
+                f.write(f"Picture: ...{name[-18:]:<30} -> No date found\n")
 
 
 def open_filedialog():
@@ -372,8 +373,6 @@ def main():
     save_to_file = input("Save to file? (y/n) ").lower() == "y"
     if save_to_file:
         write_picture_dates_to_file(picture_dates)
-
-    # test(points_by_date=points_by_date)
 
 
 if __name__ == "__main__":

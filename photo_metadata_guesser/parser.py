@@ -9,7 +9,7 @@ def parse_json(input_file):
     with open(input_file, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    points_by_date: dict[str, list[dict]] = {}
+    points_by_date: dict[str, list[dict[str, float | str]]] = {}
 
     # Extract data points
     for segment in data.get("semanticSegments", []):
