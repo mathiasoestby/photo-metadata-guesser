@@ -1,0 +1,15 @@
+# Local data files
+timeline.json
+picture_dates.txt
+
+# Compiled Python files
+__pycache__/
+*.pyc
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
