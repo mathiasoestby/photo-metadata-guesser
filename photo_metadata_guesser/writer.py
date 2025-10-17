@@ -54,7 +54,6 @@ def write_picture_dates_to_file(picture_dates: Dict[str, List[dict]]) -> None:
                         previous_date = current_date
                     else:
                         times.append(", " + time_part)
-                times = "".join(times)
-                f.write(f"Picture: ...{name[-18:]:<30} -> Dates: {times}\n")
+                f.write(f"Picture: ...{name[-18:]:<30} -> Dates: {"".join(times)}\n")
             else:
                 f.write(f"Picture: ...{name[-18:]:<30} -> No date found\n")
