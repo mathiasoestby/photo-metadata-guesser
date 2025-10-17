@@ -4,15 +4,16 @@ import sys
 from datetime import datetime, timedelta
 from tkinter import filedialog
 
-from main import (
+from .main import (
     parse_json, read_pictures, find_points_from_locations,
-    print_results, write_picture_dates_to_file
 )
 
 # from .timeline_parser import parse_json
 # from .exif_reader import read_pictures
 # from .mapper import find_points_from_locations
-# from .output import print_results, write_picture_dates_to_file
+from .writer import (
+    print_picture_dates_to_console, write_picture_dates_to_file
+)
 
 
 def open_filedialog():
@@ -138,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
         n=args.num,
     )
 
-    print_results(picture_dates)
+    print_picture_dates_to_console(picture_dates)
 
     if args.save:
         write_picture_dates_to_file(picture_dates)
