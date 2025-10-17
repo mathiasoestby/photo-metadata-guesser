@@ -110,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         # Fallback to testbilder directory if present
         print("No images provided")
         print("Trying 'test_pictures' directory...", end=" ")
-        test_dir = os.path.join(os.getcwd(), "test_pfictures")
+        test_dir = os.path.join(os.getcwd(), "test_pictures")
         if os.path.isdir(test_dir):
             picture_files = tuple(
                 os.path.join(test_dir, f) for f in os.listdir(test_dir)
