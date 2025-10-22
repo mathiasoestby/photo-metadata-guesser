@@ -5,12 +5,12 @@ from datetime import datetime, timedelta
 from tkinter import filedialog
 
 from .main import (
-    parse_json, read_pictures, find_points_from_locations,
+    parse_json, read_pictures
 )
 
 # from .timeline_parser import parse_json
 # from .exif_reader import read_pictures
-# from .mapper import find_points_from_locations
+from .mapper import find_points_from_locations
 from .writer import (
     print_picture_dates_to_console, write_picture_dates_to_file
 )

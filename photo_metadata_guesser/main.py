@@ -8,156 +8,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import heapq
 from geopy.distance import great_circle
 
-from parser import parse_json
-
-
-# LOCATIONS AND DATES
-
-def _process_date(date, date_points, lat, lon, min_date, max_date,
-                  max_distance):
-    """ Process a single date's points in parallel. """
-    if not (min_date <= date <= max_date):
-        return []
-
-    local_points = []
-    for point in date_points:
-        distance = great_circle(
-            (point["lat"], point["lon"]), (lat, lon)).meters
-        if distance <= max_distance:
-            local_points.append({**point, "distance": distance})
-
-    return local_points
-
-
-def find_closest_points_by_location(
-        points_by_date: dict[str, list[dict[str, float | str]]],
-        lat: float,
-        lon: float,
-        min_date: str,
-        max_date: str,
-        max_distance: int = 100,
-        n: int = 5
-        ) -> list[dict]:
-    # Find all points within the date range
-    closest_points = []
-    index = 0
-
-    with ThreadPoolExecutor() as executor:
-        futures = {
-            executor.submit(
-                _process_date,
-                date,
-                date_points,
-                lat,
-                lon,
-                min_date,
-                max_date,
-                max_distance,
-            ): date
-            for date, date_points in points_by_date.items()
-        }
-
-        for future in as_completed(futures):
-            try:
-                local_points = future.result()
-
-                for point in local_points:
-                    if len(closest_points) < n:
-                        heapq.heappush(
-                            closest_points, (-point["distance"], index, point))
-                    else:
-                        heapq.heappushpop(
-                            closest_points, (-point["distance"], index, point))
-                    index += 1
-            except Exception as e:
-                print(f"Error processing date {futures[future]}: {e}")
-
-    return [point for _, _, point in sorted(closest_points, reverse=True)]
-
-    # index = 0  # to ensure unique keys and stop dict comparison
-    # for date, date_points in points_by_date.items():
-    #     if date < min_date or date > max_date:
-    #         continue
-
-    #     for point in date_points:
-    #         distance = geodesic(
-    #             (point["lat"], point["lon"]), (lat, lon)).meters
-
-    #         if distance <= max_distance:
-    #             point_with_distance = {**point, "distance": distance}
-    #             heapq.heappush(closest_points, (distance,
-    #                            index, point_with_distance))
-    #         index += 1
-
-    # # Get 'n' smallest distances
-    # if not closest_points:
-    #     return None
-    # return [point for _, _, point in heapq.nsmallest(n, closest_points,
-    #                                                   y=lambda p: p[0])]
-
-
-def find_point_from_date(
-        points_by_date: dict[str, list[dict]],
-        time: str):
-    date = datetime.fromisoformat(time).date().isoformat()
-
-    if date not in points_by_date:
-        return None
-
-    points = points_by_date[date]
-
-    # Find closest point
-    closest_point = None
-    closest_distance = float("inf")
-    for point in points:
-        distance = abs(datetime.fromisoformat(point["time"])
-                       - datetime.fromisoformat(time)).total_seconds()
-        if distance < closest_distance:
-            closest_distance = distance
-            closest_point = point
-
-    return closest_point
-
-
-def find_points_from_locations(
-        points_by_date: dict[str, list[dict]],
-        picture_locations: dict[str, dict[str, float]],
-        min_date: str = "2024-09-01",
-        max_date: str = datetime.now().date().isoformat(),
-        max_distance: int = 100,
-        n: int = 5
-        ) -> dict[str, list[dict]]:
-    """Find points from a list of locations."""
-
-    def resolve_duplicate_time_entry(min_date, found_point):
-        if not found_point:
-            return min_date, None
-        if min_date == found_point["time"]:
-            found_point["time"] = \
-                (datetime.fromisoformat(found_point["time"])
-                 + timedelta(minutes=1)).isoformat()
-        else:
-            min_date = found_point["time"]
-        return min_date, found_point
-
-    mapped_picture_points: dict[str, list[dict]] = {}
-
-    for name, location in picture_locations.items():
-        print(f"Finding dates for {name}...", end='\r')
-
-        lat, lon = location["lat"], location["lon"]
-        closest_image_points = find_closest_points_by_location(
-            points_by_date, lat, lon, min_date, max_date, max_distance, n)
-
-        # Add one minute to the time if
-        # it is the same as the previous picture
-        # _, closest_image_points = resolve_duplicate_time_entry(min_date,
-        #                                               closest_image_points)
-        # min_date
-        mapped_picture_points[name] = closest_image_points
-
-    return mapped_picture_points
-
+from .parser import parse_json
+from .writer import print_picture_dates_to_console, write_picture_dates_to_file
+from .mapper import find_points_from_locations
 
 # PICTURES
 
@@ -237,7 +90,8 @@ def read_pictures(
         # Read the latidude and longitude from the picture
         lat, lon = read_picture(picture_file)
         print("Picture:" +
-              f"{picture_file} -> Latitude: {lat:.6f}, Longitude: {lon:.6f}")
+              f"{picture_file[-18:]:<30} -> Latitude: {lat:.6f}, Longitude: {lon:.6f}",
+              end="\r", flush=True)
         picture_coordinates[picture_file] = {"lat": lat, "lon": lon}
 
     return picture_coordinates
@@ -268,69 +122,6 @@ def test(points_by_date) -> None:
         print("name: ", name, "-> date: ", found_date)
 
 # MAIN
-
-
-def print_results(picture_dates) -> None:
-    """Skriver resultatene til konsollen."""
-    for name, point in picture_dates.items():
-        if point:
-            times = []
-            previous_date = None
-            point = sorted(point, key=lambda p: p["time"])
-            times.append(point[0]["time"].replace("T", " "))
-            for p in point[1:]:
-                current_date = p["time"].split("T")[0]
-                time_part = p["time"].split("T")[1]
-                if current_date != previous_date:
-                    times.append("\n" + " " * 53)
-                    times.append(current_date + " " + time_part)
-                    previous_date = current_date
-                else:
-                    times.append(", " + time_part)
-            times = "".join(times)
-            print(f"Picture: ...{name[18:]:<30} -> Dates: {times}")
-        else:
-            print(f"Picture: ...{name[18:]:<30} -> No date found")
-
-
-def write_picture_dates_to_file(picture_dates):
-    """Skriver resultatene til en fil."""
-    with open("picture_dates.txt", "w") as f:
-        for name, point in picture_dates.items():
-            if point:
-                times = []
-                previous_date = None
-                point = sorted(point, key=lambda p: p["time"])
-                times.append(point[0]["time"].replace("T", " "))
-                for p in point[1:]:
-                    current_date = p["time"].split("T")[0]
-                    time_part = p["time"].split("T")[1]
-                    if current_date != previous_date:
-                        times.append("\n" + " " * 53)
-                        times.append(current_date + " " + time_part)
-                        previous_date = current_date
-                    else:
-                        times.append(", " + time_part)
-                times = "".join(times)
-                f.write(f"Picture: ...{name[-18:]:<30} -> Dates: {times}\n")
-            else:
-                f.write(f"Picture: ...{name[-18:]:<30} -> No date found\n")
-
-
-def open_filedialog():
-    filetypes = [
-        ("Bilder", "*.jpg *.jpeg *.png")
-    ]
-    initial_dir = os.path.dirname(os.path.abspath(__file__))
-    picture_files = filedialog.askopenfilename(
-        title="Velg bilder",
-        filetypes=filetypes,
-        multiple=True,  # type: ignore
-        initialdir=initial_dir,
-    )
-    return picture_files
-
-
 def main():
     input_path = "timeline.json"
     if "-i" in sys.argv:
@@ -368,7 +159,7 @@ def main():
         points_by_date=points_by_date,
         picture_locations=picture_locations)
 
-    print_results(picture_dates)
+    print_picture_dates_to_console(picture_dates)
 
     save_to_file = input("Save to file? (y/n) ").lower() == "y"
     if save_to_file:
