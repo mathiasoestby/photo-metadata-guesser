@@ -38,22 +38,29 @@ def write_picture_dates_to_file(picture_dates: Dict[str, List[dict]]) -> None:
     Each picture is written on its own line; multi-date entries use the same
     alignment as the console output.
     """
+    formatted_picture_dates: List[str] = []
+    for name, point in picture_dates.items():
+        if point:
+            times: list[str] = []
+            previous_date = None
+            point = sorted(point, key=lambda p: p["time"])
+            times.append(point[0]["time"].replace("T", " "))
+            for p in point[1:]:
+                current_date = p["time"].split("T")[0]
+                time_part = p["time"].split("T")[1]
+                if current_date != previous_date:
+                    times.append("\n" + " " * 53)
+                    times.append(current_date + " " + time_part)
+                    previous_date = current_date
+                else:
+                    times.append(", " + time_part)
+            formatted_picture_dates.append(
+                f"Picture: ...{name[-18:]:<30} -> Dates: {"".join(times)}\n"
+            )
+        else:
+            formatted_picture_dates.append(
+                f"Picture: ...{name[-18:]:<30} -> No date found\n"
+            )
+
     with open("picture_dates.txt", "w", encoding="utf-8") as f:
-        for name, point in picture_dates.items():
-            if point:
-                times = []
-                previous_date = None
-                point = sorted(point, key=lambda p: p["time"])
-                times.append(point[0]["time"].replace("T", " "))
-                for p in point[1:]:
-                    current_date = p["time"].split("T")[0]
-                    time_part = p["time"].split("T")[1]
-                    if current_date != previous_date:
-                        times.append("\n" + " " * 53)
-                        times.append(current_date + " " + time_part)
-                        previous_date = current_date
-                    else:
-                        times.append(", " + time_part)
-                f.write(f"Picture: ...{name[-18:]:<30} -> Dates: {"".join(times)}\n")
-            else:
-                f.write(f"Picture: ...{name[-18:]:<30} -> No date found\n")
+        f.writelines(formatted_picture_dates)
