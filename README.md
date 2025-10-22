@@ -1,3 +1,5 @@
+REQUIRES UPDATE
+
 # Photo Metadata Guesser
 
 Map image EXIF GPS coordinates to timeline points (e.g., exported JSON) and creates a list of the closest matching timestamps.
@@ -10,13 +12,12 @@ Map image EXIF GPS coordinates to timeline points (e.g., exported JSON) and crea
 
 ## Requirements
 - Python 3.10+
-- Dependencies: Pillow, geopy, tkinter (ships with Python on Windows)
+- Dependencies: Pillow,
+- Optional: geopy, tkinter (ships with Python on Windows)
 
-Install requirements:
+## Installation
+Clone the repository and install dependencies:
 
-```
-pip install -r requirements.txt
-```
 
 ## Usage
 From the project root:
@@ -48,11 +49,12 @@ Options:
   - `mapper.py` – matching logic
   - `output.py` – printing and file output helpers
 - `main.py` – thin wrapper calling the CLI (for convenience)
-- `testbilder/` – sample images (not required)
+- `test_pictures/` – sample images (not required)
+
+## Planned Improvements
+- GUI application for easier use
+- Guessing GPS coordinates from date/time if missing in EXIF
 
 ## Notes
 - `.gitignore` excludes personal data exports and caches.
-- The original Norwegian file name `Tidslinje.json` is still supported as default input; feel free to rename your export when sharing.
-
-## License
-MIT (you can change this if you prefer).
+- Ensure images have GPS EXIF data for accurate results.
